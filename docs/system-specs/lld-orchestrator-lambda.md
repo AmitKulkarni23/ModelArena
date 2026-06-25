@@ -792,3 +792,95 @@ composite = 0.60 × normalized_quality + 0.25 × normalized_cost_efficiency + 0.
 ### Load Test Targets
 
 Not applicable for POC (single-user, capped at 10 concurrent Lambda executions).
+
+---
+
+## Adversarial Review
+
+Reviewed: 2026-06-24
+
+### Challenge 1: Race Condition in Composite Score Calculation
+> Judge results arrive asynchronously. If scoring/normalization runs before all judge results complete, min-max bounds are wrong and models are mis-ranked.
+
+**Disposition: Accepted**
+
+Valid concern. Fix: `run_benchmark` must explicitly `join_all(judge_handles).await` before calling `compute_rankings()`. The pipeline becomes:
+
+```
+Phase 1: fan_out_model_calls() → collect all model results
+Phase 2: fan_out_judge_calls() → join_all(judge_handles).await → collect all judge results
+Phase 3: compute_rankings() → only runs after Phase 2 completes
+Phase 4: recommend_routing() → uses complete rankings
+```
+
+Updated `fanout.rs` design: both `fan_out_model_calls` and `fan_out_judge_calls` return only after all handles are joined. The streaming SSE events fire as individual results arrive (via the `tx` channel), but the final recommendation waits for completeness.
+
+### Challenge 2: Judge Parse Fallback Assigns Neutral Scores Silently
+> Defaulting to score 5 on parse failure is indistinguishable from a neutral judgment. Hides judge misbehavior.
+
+**Disposition: Partially Accepted**
+
+**Accepted:** Add `is_fallback: bool` to `JudgeScores`. Include in SSE `judge_result` event so frontend can mark imputed scores visually. Track fallback count per model.
+
+**Rejected:** "Cap fallback to max 1 then abort recommendation." Too aggressive for POC — free-tier models will frequently return unparseable responses. Aborting recommendation removes the core value prop. Instead:
+
+- Track `fallback_count` in aggregation
+- Include fallback rate in `ModelRanking` confidence (see Challenge 5)
+- Frontend shows warning icon on imputed scores with tooltip
+
+Updated `judge.rs`: `parse_judge_response` returns `JudgeScores { scores, reasoning, is_fallback }`.
+
+### Challenge 3: Difficulty Classification Misses Hard Cases
+> Keyword-based classification misses token-heavy, multi-step, or action-verb-dense prompts.
+
+**Disposition: Partially Accepted**
+
+**Accepted:** Lower the char-length threshold. Current LLD says 8000 chars (~2000 tokens). Reduce to 4000 chars (~1000 tokens) as the challenger suggests. This catches more genuinely complex prompts without over-classifying.
+
+**Rejected:** Action verb density analysis. Over-engineered for a heuristic classifier in a POC. The heuristic is explicitly labeled as "directional" — the real fix (v2) is a trained classifier model. Adding NLP parsing to heuristics creates false confidence in a fundamentally limited approach.
+
+Updated `routing.rs`: threshold changed from `text.len() > 8000` to `text.len() > 4000`.
+
+### Challenge 4: SSE Channel Overflow Causes Resource Leaks
+> If client disconnects, `tx.send()` errors are unhandled. Lambda keeps running, burning compute.
+
+**Disposition: Accepted**
+
+Fix: Add `tokio_util::sync::CancellationToken` to coordinate graceful shutdown.
+
+```rust
+let cancel = CancellationToken::new();
+
+// In each spawned task:
+tokio::select! {
+    result = client.chat_completion(...) => { /* handle result */ }
+    _ = cancel.cancelled() => { return; }
+}
+
+// In send logic:
+if tx.send(event).await.is_err() {
+    cancel.cancel(); // Client disconnected, abort all tasks
+    return;
+}
+```
+
+Updated dependencies: add `tokio-util` crate. Updated `fanout.rs` to accept `CancellationToken` and check on each send. Updated `main.rs` to create token and pass to `run_benchmark`.
+
+### Challenge 5: No Judge Failure Detection
+> Models with zero judge results still rank with default 5.0. No confidence signal in recommendation.
+
+**Disposition: Accepted**
+
+Add `confidence: f64` to `ModelRanking`:
+
+```rust
+let expected_judge_count = judge_models.len() * test_cases.len();
+let actual_judge_count = model_judges.iter().filter(|j| !j.is_fallback).count();
+let confidence = actual_judge_count as f64 / expected_judge_count as f64;
+```
+
+Add `incomplete_models: Vec<String>` to `RoutingPolicy` — lists models with confidence < 0.5.
+
+Add to recommendation reasoning: "⚠️ Models X, Y have incomplete judge data (N% confidence) — consider rerunning."
+
+Updated `scoring.rs` and `types.rs` with confidence field. Updated `routing.rs` to include incomplete_models warning.
