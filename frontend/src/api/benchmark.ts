@@ -56,11 +56,16 @@ export function startBenchmark(
     body: JSON.stringify(request),
     signal: controller.signal,
   })
-    .then((response) => {
+    .then(async (response) => {
       if (!response.ok) {
-        return response.json().then((err) => {
-          throw new Error(err.message || `HTTP ${response.status}`);
-        });
+        let message = `HTTP ${response.status}`;
+        try {
+          const body = await response.json();
+          message = body.message || message;
+        } catch {
+          // empty or non-JSON error body
+        }
+        throw new Error(message);
       }
 
       const reader = response.body!.getReader();

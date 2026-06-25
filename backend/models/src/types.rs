@@ -46,11 +46,10 @@ pub struct OpenRouterModel {
     pub id: String,
     pub name: String,
     pub context_length: u32,
-    pub max_completion_tokens: Option<u32>,
-    pub modality: String,
     pub pricing: OpenRouterPricing,
-    pub supported_generation_methods: Vec<String>,
     pub architecture: Option<OpenRouterArchitecture>,
+    pub top_provider: Option<OpenRouterTopProvider>,
+    pub supported_parameters: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -62,6 +61,11 @@ pub struct OpenRouterPricing {
 #[derive(Debug, Clone, Deserialize)]
 pub struct OpenRouterArchitecture {
     pub modality: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct OpenRouterTopProvider {
+    pub max_completion_tokens: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -78,25 +82,35 @@ impl ModelSummary {
         let prompt_price = model.pricing.prompt.parse::<f64>().unwrap_or(0.0);
         let completion_price = model.pricing.completion.parse::<f64>().unwrap_or(0.0);
 
+        let modality = model
+            .architecture
+            .as_ref()
+            .and_then(|a| a.modality.clone())
+            .unwrap_or_else(|| "text->text".to_string());
+
+        let max_completion_tokens = model
+            .top_provider
+            .as_ref()
+            .and_then(|tp| tp.max_completion_tokens);
+
+        let supported_params = model.supported_parameters.as_deref().unwrap_or(&[]);
+        let supports_tools = supported_params
+            .iter()
+            .any(|p| p.contains("tool") || p.contains("function"));
+
         Self {
             id: model.id,
             name: model.name,
             provider,
             context_length: model.context_length,
-            max_completion_tokens: model.max_completion_tokens,
-            modality: model.modality,
+            max_completion_tokens,
+            modality,
             pricing: ModelPricing {
                 prompt_per_million: prompt_price * 1_000_000.0,
                 completion_per_million: completion_price * 1_000_000.0,
             },
-            supports_tools: model
-                .supported_generation_methods
-                .iter()
-                .any(|m| m.contains("tool") || m.contains("function")),
-            supports_streaming: model
-                .supported_generation_methods
-                .iter()
-                .any(|m| m.contains("stream")),
+            supports_tools,
+            supports_streaming: true,
             is_free,
         }
     }

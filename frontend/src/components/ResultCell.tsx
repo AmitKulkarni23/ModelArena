@@ -1,6 +1,14 @@
 import React from "react";
-import { Box, CircularProgress, Chip, Stack, Typography, Button } from "@mui/material";
+import { keyframes } from "@emotion/react";
+import { Box, CircularProgress, Chip, Stack, Typography, Button, useTheme } from "@mui/material";
 import { ModelResultEvent, JudgeResultEvent } from "../types/benchmark";
+
+const cellIn = keyframes`
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+`;
+
+const MONO = '"JetBrains Mono", "Fira Code", "Courier New", monospace';
 
 interface ResultCellProps {
   modelResult?: ModelResultEvent;
@@ -8,18 +16,20 @@ interface ResultCellProps {
   onClickDetail?: () => void;
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 8) return "#16a34a";
-  if (score >= 6) return "#d97706";
-  if (score >= 4) return "#ea580c";
-  return "#dc2626";
-}
-
 export function ResultCell({
   modelResult,
   judgeResults,
   onClickDetail,
 }: ResultCellProps) {
+  const theme = useTheme();
+
+  function getScoreColor(score: number): string {
+    if (score >= 8) return theme.palette.success.main;
+    if (score >= 6) return theme.palette.warning.main;
+    if (score >= 4) return theme.palette.error.light ?? "#ea580c";
+    return theme.palette.error.main;
+  }
+
   if (!modelResult) {
     return (
       <Box
@@ -50,7 +60,8 @@ export function ResultCell({
         border: "1px solid",
         borderColor: "divider",
         cursor: onClickDetail ? "pointer" : "default",
-        transition: "all 0.2s",
+        transition: "background-color 0.15s ease",
+        animation: `${cellIn} 0.25s cubic-bezier(0.25, 1, 0.5, 1) both`,
         "&:hover": onClickDetail ? { backgroundColor: "action.hover" } : {},
       }}
     >
@@ -68,6 +79,8 @@ export function ResultCell({
               color: "white",
               fontWeight: 700,
               fontSize: "1.25rem",
+              fontFamily: MONO,
+              fontVariantNumeric: "tabular-nums",
             }}
           >
             {avgScore.toFixed(1)}

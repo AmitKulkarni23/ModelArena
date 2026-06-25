@@ -24,10 +24,11 @@ export function ModelCard({ model, selected, onToggle }: ModelCardProps) {
     <Card
       sx={{
         cursor: "pointer",
-        border: selected ? "2px solid" : "1px solid",
+        border: "2px solid",
         borderColor: selected ? "primary.main" : "divider",
         backgroundColor: selected ? "action.selected" : "background.paper",
-        transition: "all 0.2s",
+        transition: "border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease",
+        "&:hover": { boxShadow: "0 2px 8px rgba(0,0,0,0.1)" },
       }}
       onClick={() => onToggle(model.id)}
     >

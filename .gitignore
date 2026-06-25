@@ -1,1 +1,24 @@
+# Secrets
 .env
+
+# Rust build outputs
+target/
+
+# Node
+node_modules/
+package-lock.json
+
+# TypeScript compiled outputs
+*.js
+*.d.ts
+*.js.map
+
+# Frontend build
+dist/
+
+# CDK synthesis output
+cdk.out/
+
+# Tool-specific
+.claude/
+.impeccable/

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { keyframes } from "@emotion/react";
 import {
   Container,
   Box,
@@ -7,7 +8,6 @@ import {
   StepLabel,
   Button,
   Stack,
-  Alert,
 } from "@mui/material";
 import { PromptConfigStep } from "../components/PromptConfigStep";
 import { ModelSelectionStep } from "../components/ModelSelectionStep";
@@ -16,7 +16,12 @@ import { TestCase, BenchmarkConfig } from "../types/benchmark";
 import { useBenchmark } from "../hooks/useBenchmark";
 import { useModels } from "../hooks/useModels";
 
-const steps = ["Configure Prompt", "Select Models", "Review & Run"];
+const stepIn = keyframes`
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+`;
+
+const STEPS = ["Configure Prompt", "Select Models", "Review & Run"];
 
 export function BenchmarkCreatePage() {
   const [activeStep, setActiveStep] = useState(0);
@@ -24,41 +29,58 @@ export function BenchmarkCreatePage() {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
 
+  const [systemPromptError, setSystemPromptError] = useState("");
+  const [testCasesError, setTestCasesError] = useState("");
+  const [modelError, setModelError] = useState("");
+
   const { state: benchmarkState, startBenchmark } = useBenchmark();
   const { models } = useModels();
 
-  const selectedModels = models.filter((m) =>
-    selectedModelIds.includes(m.id),
+  const selectedModelIdSet = useMemo(() => new Set(selectedModelIds), [selectedModelIds]);
+  const selectedModels = useMemo(
+    () => models.filter((m) => selectedModelIdSet.has(m.id)),
+    [models, selectedModelIdSet],
   );
 
+  const clearErrors = () => {
+    setSystemPromptError("");
+    setTestCasesError("");
+    setModelError("");
+  };
+
   const handleNext = () => {
+    clearErrors();
+
     if (activeStep === 0) {
+      let valid = true;
       if (!systemPrompt.trim()) {
-        alert("System prompt is required");
-        return;
+        setSystemPromptError("System prompt is required.");
+        valid = false;
       }
       if (testCases.length === 0) {
-        alert("Add at least one test case");
-        return;
+        setTestCasesError("Add at least one test case.");
+        valid = false;
       }
-    } else if (activeStep === 1) {
+      if (!valid) return;
+    }
+
+    if (activeStep === 1) {
       if (selectedModelIds.length === 0) {
-        alert("Select at least one model");
-        return;
-      }
-      if (selectedModelIds.length > 10) {
-        alert("Maximum 10 models allowed");
+        setModelError("Select at least one model to benchmark.");
         return;
       }
     }
+
     setActiveStep((prev) => prev + 1);
   };
 
   const handleBack = () => {
+    clearErrors();
     setActiveStep((prev) => prev - 1);
   };
 
   const handleToggleModel = (modelId: string) => {
+    setModelError("");
     setSelectedModelIds((prev) =>
       prev.includes(modelId)
         ? prev.filter((id) => id !== modelId)
@@ -75,11 +97,11 @@ export function BenchmarkCreatePage() {
       model_ids: selectedModelIds,
     };
     startBenchmark(config);
-    window.location.hash = "/#/benchmark/run";
+    window.location.hash = "/benchmark/run";
   };
 
   if (benchmarkState.phase === "running" || benchmarkState.phase === "complete") {
-    window.location.hash = "/#/benchmark/run";
+    window.location.hash = "/benchmark/run";
     return null;
   }
 
@@ -87,20 +109,25 @@ export function BenchmarkCreatePage() {
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Stack spacing={3}>
         <Stepper activeStep={activeStep}>
-          {steps.map((label) => (
+          {STEPS.map((label) => (
             <Step key={label}>
               <StepLabel>{label}</StepLabel>
             </Step>
           ))}
         </Stepper>
 
-        <Box sx={{ minHeight: 400 }}>
+        <Box
+          key={activeStep}
+          sx={{ minHeight: 400, animation: `${stepIn} 0.2s cubic-bezier(0.25, 1, 0.5, 1) both` }}
+        >
           {activeStep === 0 && (
             <PromptConfigStep
               systemPrompt={systemPrompt}
-              onSystemPromptChange={setSystemPrompt}
+              onSystemPromptChange={(v) => { setSystemPromptError(""); setSystemPrompt(v); }}
               testCases={testCases}
-              onTestCasesChange={setTestCases}
+              onTestCasesChange={(v) => { setTestCasesError(""); setTestCases(v); }}
+              systemPromptError={systemPromptError}
+              testCasesError={testCasesError}
             />
           )}
 
@@ -108,6 +135,7 @@ export function BenchmarkCreatePage() {
             <ModelSelectionStep
               selectedModelIds={selectedModelIds}
               onToggleModel={handleToggleModel}
+              error={modelError}
             />
           )}
 
@@ -125,10 +153,7 @@ export function BenchmarkCreatePage() {
         </Box>
 
         <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between" }}>
-          <Button
-            onClick={handleBack}
-            disabled={activeStep === 0}
-          >
+          <Button onClick={handleBack} disabled={activeStep === 0}>
             Back
           </Button>
           {activeStep < 2 && (

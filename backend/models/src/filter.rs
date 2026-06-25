@@ -52,17 +52,12 @@ fn match_min_context(model: &OpenRouterModel, min_context: Option<u32>) -> bool 
 fn match_modality(model: &OpenRouterModel, modality: &Option<String>) -> bool {
     match modality {
         None => true,
-        Some(m) => {
-            let arch_modality = model
-                .architecture
-                .as_ref()
-                .and_then(|a| a.modality.as_ref());
-            if let Some(am) = arch_modality {
-                am.to_lowercase().contains(&m.to_lowercase())
-            } else {
-                model.modality.to_lowercase().contains(&m.to_lowercase())
-            }
-        }
+        Some(m) => model
+            .architecture
+            .as_ref()
+            .and_then(|a| a.modality.as_ref())
+            .map(|am| am.to_lowercase().contains(&m.to_lowercase()))
+            .unwrap_or(false),
     }
 }
 
@@ -77,9 +72,11 @@ fn match_supports_tools(model: &OpenRouterModel, supports_tools: Option<bool>) -
     match supports_tools {
         None => true,
         Some(true) => model
-            .supported_generation_methods
+            .supported_parameters
+            .as_deref()
+            .unwrap_or(&[])
             .iter()
-            .any(|m| m.contains("tool") || m.contains("function")),
+            .any(|p| p.contains("tool") || p.contains("function")),
         Some(false) => true,
     }
 }

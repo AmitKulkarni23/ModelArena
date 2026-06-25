@@ -6,6 +6,7 @@ import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as crypto from "crypto";
+import { createWafAcl } from "./utils/waf-util";
 import path = require("path");
 
 export class ModelArenaStack extends cdk.Stack {
@@ -149,21 +150,6 @@ export class ModelArenaStack extends cdk.Stack {
       }
     );
 
-    // Origin request policy — forward origin-verify header to Lambda
-    const originVerifyRequestPolicy =
-      new cloudfront.OriginRequestPolicy(
-        this,
-        "OriginVerifyRequestPolicy",
-        {
-          headerBehavior:
-            cloudfront.OriginRequestHeaderBehavior.allowList(
-              "x-origin-verify"
-            ),
-          queryStringBehavior:
-            cloudfront.OriginRequestQueryStringBehavior.all(),
-        }
-      );
-
     // Lambda Function URL origins
     const modelsOrigin = new origins.FunctionUrlOrigin(modelsUrl, {
       customHeaders: {
@@ -180,12 +166,19 @@ export class ModelArenaStack extends cdk.Stack {
       }
     );
 
+    // ─── WAF ─────────────────────────────────────────────
+    const webAcl = createWafAcl(this, "WafAcl", {
+      scope: "CLOUDFRONT",
+      metricNamePrefix: "ModelArena",
+    });
+
     // Distribution
     const distribution = new cloudfront.Distribution(
       this,
       "Distribution",
       {
         enabled: true,
+        webAclId: webAcl.attrArn,
         defaultBehavior: {
           origin: origins.S3BucketOrigin.withOriginAccessControl(
             frontendBucket
@@ -201,7 +194,6 @@ export class ModelArenaStack extends cdk.Stack {
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             cachePolicy: apiCachePolicy,
-            originRequestPolicy: originVerifyRequestPolicy,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
           },
           "/api/benchmark*": {
@@ -209,7 +201,6 @@ export class ModelArenaStack extends cdk.Stack {
             viewerProtocolPolicy:
               cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             cachePolicy: noCachePolicy,
-            originRequestPolicy: originVerifyRequestPolicy,
             allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
           },
         },

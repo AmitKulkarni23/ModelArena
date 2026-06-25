@@ -26,7 +26,7 @@ dev-frontend:
 	cd frontend && bun run dev
 
 dev-models:
-	cd backend/models && cargo lambda watch
+	cd backend/models && cargo lambda watch --invoke-port 9001 --env-file ../../.env
 
 dev-orchestrator:
-	cd backend/orchestrator && cargo lambda watch
+	cd backend/orchestrator && cargo lambda watch --invoke-port 9002 --env-file ../../.env

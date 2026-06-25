@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack, TextField, Typography, Box } from "@mui/material";
+import { Stack, TextField, Typography, Box, Alert } from "@mui/material";
 import { TestCaseList } from "./TestCaseList";
 import { TestCase } from "../types/benchmark";
 
@@ -8,6 +8,8 @@ interface PromptConfigStepProps {
   onSystemPromptChange: (prompt: string) => void;
   testCases: TestCase[];
   onTestCasesChange: (cases: TestCase[]) => void;
+  systemPromptError?: string;
+  testCasesError?: string;
 }
 
 export function PromptConfigStep({
@@ -15,6 +17,8 @@ export function PromptConfigStep({
   onSystemPromptChange,
   testCases,
   onTestCasesChange,
+  systemPromptError,
+  testCasesError,
 }: PromptConfigStepProps) {
   return (
     <Stack spacing={3}>
@@ -29,10 +33,19 @@ export function PromptConfigStep({
           placeholder="Enter the system prompt for the benchmark..."
           value={systemPrompt}
           onChange={(e) => onSystemPromptChange(e.target.value)}
+          error={!!systemPromptError}
+          helperText={systemPromptError}
         />
       </Box>
 
-      <TestCaseList testCases={testCases} onUpdate={onTestCasesChange} />
+      <Box>
+        <TestCaseList testCases={testCases} onUpdate={onTestCasesChange} />
+        {testCasesError && (
+          <Alert severity="error" sx={{ mt: 1.5 }}>
+            {testCasesError}
+          </Alert>
+        )}
+      </Box>
     </Stack>
   );
 }

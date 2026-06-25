@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { Container, Stack, Alert, Button } from "@mui/material";
+import { Container, Stack, Alert, Button, Typography, Box, Divider } from "@mui/material";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { RecommendationCard } from "../components/RecommendationCard";
 import { RankingsTable } from "../components/RankingsTable";
 import { ResultsMatrix } from "../components/ResultsMatrix";
@@ -32,24 +33,13 @@ export function BenchmarkResultsPage() {
   };
 
   const selectedCellData = useMemo(() => {
-    if (!selectedCell || !benchmarkState.config) {
-      return null;
-    }
-
+    if (!selectedCell || !benchmarkState.config) return null;
     const key = `${selectedCell.modelId}:${selectedCell.testCaseIdx}`;
     const modelResult = benchmarkState.modelResults.get(key);
     const judgeResults = benchmarkState.judgeResults.get(key);
-    const modelName = selectedModels.find(
-      (m) => m.id === selectedCell.modelId,
-    )?.name;
+    const modelName = selectedModels.find((m) => m.id === selectedCell.modelId)?.name;
     const testCase = benchmarkState.config.test_cases[selectedCell.testCaseIdx];
-
-    return {
-      modelResult,
-      judgeResults,
-      modelName,
-      testCaseInput: testCase?.input,
-    };
+    return { modelResult, judgeResults, modelName, testCaseInput: testCase?.input };
   }, [selectedCell, benchmarkState.config, benchmarkState.modelResults, benchmarkState.judgeResults, selectedModels]);
 
   if (benchmarkState.phase !== "complete") {
@@ -60,7 +50,7 @@ export function BenchmarkResultsPage() {
         </Alert>
         <Button
           variant="contained"
-          onClick={() => (window.location.hash = "/#/benchmark/new")}
+          onClick={() => (window.location.hash = "/benchmark/new")}
           sx={{ mt: 2 }}
         >
           Create Benchmark
@@ -79,11 +69,26 @@ export function BenchmarkResultsPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Stack spacing={3}>
+      <Stack spacing={4}>
+        {/* Page heading */}
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Benchmark Results
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {selectedModels.length} model{selectedModels.length !== 1 ? "s" : ""} ·{" "}
+            {benchmarkState.config.test_cases.length} test case{benchmarkState.config.test_cases.length !== 1 ? "s" : ""}
+          </Typography>
+        </Box>
+
+        {/* Recommendation — visually distinct, no Card wrapper */}
         {benchmarkState.recommendation && (
           <RecommendationCard recommendation={benchmarkState.recommendation} />
         )}
 
+        <Divider />
+
+        {/* Rankings */}
         <RankingsTable
           models={selectedModels}
           modelResults={benchmarkState.modelResults}
@@ -91,6 +96,7 @@ export function BenchmarkResultsPage() {
           testCaseCount={benchmarkState.config.test_cases.length}
         />
 
+        {/* Results matrix */}
         <ResultsMatrix
           models={selectedModels}
           testCases={benchmarkState.config.test_cases}
@@ -101,15 +107,18 @@ export function BenchmarkResultsPage() {
 
         <JudgeDisclaimer />
 
-        <Button
-          variant="contained"
-          onClick={() => {
-            reset();
-            window.location.hash = "/#/benchmark/new";
-          }}
-        >
-          Run Another Benchmark
-        </Button>
+        <Box>
+          <Button
+            variant="outlined"
+            endIcon={<ArrowForwardIcon />}
+            onClick={() => {
+              reset();
+              window.location.hash = "/benchmark/new";
+            }}
+          >
+            Run Another Benchmark
+          </Button>
+        </Box>
       </Stack>
 
       {selectedCellData && (

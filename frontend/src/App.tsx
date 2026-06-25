@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { keyframes } from "@emotion/react";
 import { ThemeProvider } from "@mui/material/styles";
 import { CssBaseline, Box } from "@mui/material";
 import { theme } from "./theme";
@@ -8,6 +9,11 @@ import { LandingPage } from "./pages/LandingPage";
 import { BenchmarkCreatePage } from "./pages/BenchmarkCreatePage";
 import { BenchmarkRunPage } from "./pages/BenchmarkRunPage";
 import { BenchmarkResultsPage } from "./pages/BenchmarkResultsPage";
+
+const pageIn = keyframes`
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
 
 function useHashRoute(): string {
   const [route, setRoute] = useState(window.location.hash.slice(1) || "/");
@@ -48,7 +54,11 @@ function App() {
       <CssBaseline />
       <BenchmarkProvider>
         <AppBar />
-        <Box component="main">
+        <Box
+          component="main"
+          key={route}
+          sx={{ animation: `${pageIn} 0.22s cubic-bezier(0.25, 1, 0.5, 1) both` }}
+        >
           <Router route={route} />
         </Box>
       </BenchmarkProvider>

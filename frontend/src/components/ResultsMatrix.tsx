@@ -1,4 +1,5 @@
 import React from "react";
+import { keyframes } from "@emotion/react";
 import {
   TableContainer,
   Table,
@@ -11,8 +12,17 @@ import {
   Typography,
   Box,
   Chip,
+  useTheme,
 } from "@mui/material";
+import { Theme } from "@mui/material/styles";
 import { ModelSummary } from "../types/models";
+
+const MONO = '"JetBrains Mono", "Fira Code", "Courier New", monospace';
+
+const scoreIn = keyframes`
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+`;
 import { ModelResultEvent, JudgeResultEvent, TestCase } from "../types/benchmark";
 
 interface ResultsMatrixProps {
@@ -23,11 +33,11 @@ interface ResultsMatrixProps {
   onCellClick?: (modelId: string, testCaseIdx: number) => void;
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 8) return "#16a34a";
-  if (score >= 6) return "#d97706";
-  if (score >= 4) return "#ea580c";
-  return "#dc2626";
+function getScoreColor(score: number, theme: Theme): string {
+  if (score >= 8) return theme.palette.success.main;
+  if (score >= 6) return theme.palette.warning.main;
+  if (score >= 4) return theme.palette.error.light ?? "#ea580c";
+  return theme.palette.error.main;
 }
 
 export function ResultsMatrix({
@@ -37,8 +47,9 @@ export function ResultsMatrix({
   judgeResults,
   onCellClick,
 }: ResultsMatrixProps) {
+  const theme = useTheme();
   return (
-    <Card sx={{ mb: 3 }}>
+    <Card>
       <CardContent>
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
           Results Matrix
@@ -61,7 +72,7 @@ export function ResultsMatrix({
             <TableBody>
               {models.map((model) => (
                 <TableRow key={model.id}>
-                  <TableCell sx={{ fontWeight: 600 }}>{model.name}</TableCell>
+                  <TableCell sx={{ fontWeight: 600, fontFamily: MONO }}>{model.name}</TableCell>
                   {testCases.map((_, tcIdx) => {
                     const key = `${model.id}:${tcIdx}`;
                     const modelResult = modelResults.get(key);
@@ -75,7 +86,7 @@ export function ResultsMatrix({
                         judgeRez.reduce((sum, j) => sum + j.score, 0) /
                         judgeRez.length;
                       scoreDisplay = avg.toFixed(1);
-                      scoreColor = getScoreColor(avg);
+                      scoreColor = getScoreColor(avg, theme);
                     }
 
                     return (
@@ -114,6 +125,10 @@ export function ResultsMatrix({
                               color: "white",
                               fontWeight: 700,
                               fontSize: "0.875rem",
+                              fontFamily: MONO,
+                              ...(scoreDisplay !== "-" && {
+                                animation: `${scoreIn} 0.2s cubic-bezier(0.25, 1, 0.5, 1) both`,
+                              }),
                             }}
                           >
                             {scoreDisplay}
@@ -124,11 +139,13 @@ export function ResultsMatrix({
                                 label={`${modelResult.latency_ms}ms`}
                                 size="small"
                                 variant="outlined"
+                                sx={{ fontFamily: MONO }}
                               />
                               <Chip
                                 label={`$${modelResult.cost_usd.toFixed(4)}`}
                                 size="small"
                                 variant="outlined"
+                                sx={{ fontFamily: MONO }}
                               />
                             </>
                           )}

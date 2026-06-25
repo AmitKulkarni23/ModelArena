@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { keyframes } from "@emotion/react";
 import {
   TableContainer,
   Table,
@@ -12,9 +13,18 @@ import {
   Stack,
   Collapse,
   Box,
+  Tooltip,
 } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { ModelSummary } from "../types/models";
 import { ModelResultEvent, JudgeResultEvent } from "../types/benchmark";
+
+const MONO = '"JetBrains Mono", "Fira Code", "Courier New", monospace';
+
+const rowIn = keyframes`
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
 
 interface RankingsTableProps {
   models: ModelSummary[];
@@ -87,13 +97,13 @@ export function RankingsTable({
     .sort((a, b) => b.compositeScore - a.compositeScore);
 
   return (
-    <Card sx={{ mb: 3 }}>
+    <Card>
       <CardContent>
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
           Model Rankings
         </Typography>
 
-        <TableContainer>
+        <TableContainer sx={{ overflowX: "auto" }}>
           <Table>
             <TableHead>
               <TableRow sx={{ backgroundColor: "action.hover" }}>
@@ -109,7 +119,12 @@ export function RankingsTable({
                   Total Cost
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Composite Score
+                  <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="flex-end">
+                    <span>Composite Score</span>
+                    <Tooltip title="60% quality score + 40% speed. Latency penalty capped at 10 s — anything slower scores 0 on speed." arrow>
+                      <InfoOutlinedIcon sx={{ fontSize: 14, color: "text.disabled", cursor: "help" }} />
+                    </Tooltip>
+                  </Stack>
                 </TableCell>
               </TableRow>
             </TableHead>
@@ -124,23 +139,25 @@ export function RankingsTable({
                     }
                     sx={{
                       cursor: "pointer",
+                      animation: `${rowIn} 0.25s ease-out both`,
+                      animationDelay: `${idx * 45}ms`,
                       "&:hover": { backgroundColor: "action.hover" },
                     }}
                   >
-                    <TableCell sx={{ fontWeight: 700 }}>{idx + 1}</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>
+                    <TableCell sx={{ fontWeight: 700, fontFamily: MONO }}>{idx + 1}</TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontFamily: MONO }}>
                       {metric.modelName}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="right" sx={{ fontFamily: MONO }}>
                       {metric.avgQuality.toFixed(2)}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="right" sx={{ fontFamily: MONO }}>
                       {metric.avgLatency.toFixed(0)}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="right" sx={{ fontFamily: MONO }}>
                       ${metric.totalCost.toFixed(4)}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: "primary.main" }}>
+                    <TableCell align="right" sx={{ fontWeight: 700, color: "primary.main", fontFamily: MONO }}>
                       {metric.compositeScore.toFixed(2)}
                     </TableCell>
                   </TableRow>
@@ -153,10 +170,10 @@ export function RankingsTable({
                       >
                         <Box sx={{ p: 2, backgroundColor: "action.hover" }}>
                           <Stack spacing={1}>
-                            <Typography variant="caption">
+                            <Typography variant="caption" sx={{ fontFamily: MONO }}>
                               Cost per 1k tokens: ${metric.costPer1k.toFixed(6)}
                             </Typography>
-                            <Typography variant="caption">
+                            <Typography variant="caption" sx={{ fontFamily: MONO }}>
                               Composite Score: {metric.compositeScore.toFixed(2)} (60% quality + 40% speed)
                             </Typography>
                           </Stack>

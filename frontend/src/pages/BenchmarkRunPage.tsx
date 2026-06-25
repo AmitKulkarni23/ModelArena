@@ -32,7 +32,7 @@ export function BenchmarkRunPage() {
         <Alert severity="info">No benchmark running. Start a new one.</Alert>
         <Button
           variant="contained"
-          onClick={() => (window.location.hash = "/#/benchmark/new")}
+          onClick={() => (window.location.hash = "/benchmark/new")}
           sx={{ mt: 2 }}
         >
           Create Benchmark
@@ -49,7 +49,7 @@ export function BenchmarkRunPage() {
         </Alert>
         <Button
           variant="contained"
-          onClick={() => (window.location.hash = "/#/")}
+          onClick={() => (window.location.hash = "/")}
           sx={{ mt: 2 }}
         >
           Back to Home
@@ -79,7 +79,8 @@ export function BenchmarkRunPage() {
 
         {benchmarkState.phase === "complete" && (
           <Alert severity="success">
-            Benchmark complete! Redirecting to results...
+            {benchmarkState.progress.modelTasksTotal} model{benchmarkState.progress.modelTasksTotal !== 1 ? "s" : ""} scored.{" "}
+            Redirecting to results...
           </Alert>
         )}
       </Stack>

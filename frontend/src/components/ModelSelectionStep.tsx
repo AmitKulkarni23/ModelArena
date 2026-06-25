@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Stack,
   Typography,
@@ -10,28 +10,35 @@ import {
 } from "@mui/material";
 import { ModelFilterBar } from "./ModelFilterBar";
 import { ModelCard } from "./ModelCard";
-import { useModels, ModelFilters } from "../hooks/useModels";
-import { ModelSummary } from "../types/models";
+import { useModels } from "../hooks/useModels";
 
 interface ModelSelectionStepProps {
   selectedModelIds: string[];
   onToggleModel: (modelId: string) => void;
+  error?: string;
 }
 
 export function ModelSelectionStep({
   selectedModelIds,
   onToggleModel,
+  error,
 }: ModelSelectionStepProps) {
   const {
     models,
     loading,
-    error,
+    error: loadError,
     search,
     setSearch,
     filters,
     setFilters,
     filteredModels,
   } = useModels();
+
+  const selectedModelIdSet = useMemo(() => new Set(selectedModelIds), [selectedModelIds]);
+  const selectedModels = useMemo(
+    () => models.filter((m) => selectedModelIdSet.has(m.id)),
+    [models, selectedModelIdSet],
+  );
 
   if (loading) {
     return (
@@ -42,20 +49,18 @@ export function ModelSelectionStep({
     );
   }
 
-  if (error) {
+  if (loadError) {
     return (
       <Alert severity="error">
-        Failed to load models: {error}. Please refresh the page.
+        Failed to load models: {loadError}. Please refresh the page.
       </Alert>
     );
   }
-
-  const selectedModels = models.filter((m) =>
-    selectedModelIds.includes(m.id),
-  );
+  const count = selectedModelIds.length;
+  const atCap = count >= 10;
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={2}>
       <ModelFilterBar
         models={models}
         filters={filters}
@@ -64,23 +69,41 @@ export function ModelSelectionStep({
         onSearchChange={setSearch}
       />
 
+      {/* Selection status */}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: 600,
+            color: atCap ? "warning.main" : count > 0 ? "primary.main" : "text.secondary",
+          }}
+        >
+          {count} / 10 models selected
+          {atCap && " — at limit"}
+        </Typography>
+      </Box>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {atCap && (
+        <Alert severity="warning">
+          Maximum 10 models selected. Deselect one to swap it out.
+        </Alert>
+      )}
+
       {selectedModels.length > 0 && (
-        <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-            Selected Models ({selectedModels.length}/10)
-          </Typography>
-          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-            {selectedModels.map((m) => (
-              <Chip
-                key={m.id}
-                label={m.name}
-                onDelete={() => onToggleModel(m.id)}
-                color="primary"
-                variant="filled"
-              />
-            ))}
-          </Stack>
-        </Box>
+        <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
+          {selectedModels.map((m) => (
+            <Chip
+              key={m.id}
+              label={m.name}
+              onDelete={() => onToggleModel(m.id)}
+              color="primary"
+              variant="filled"
+              size="small"
+            />
+          ))}
+        </Stack>
       )}
 
       <Grid container spacing={2}>

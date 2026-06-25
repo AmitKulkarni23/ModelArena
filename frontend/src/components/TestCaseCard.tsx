@@ -30,7 +30,7 @@ export function TestCaseCard({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <Card sx={{ mb: 2 }}>
+    <Card>
       <CardContent>
         <Stack spacing={2}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>

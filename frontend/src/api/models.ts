@@ -14,8 +14,14 @@ export async function fetchModels(params?: ModelsQuery): Promise<ModelsResponse>
 
   const response = await fetch(url);
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || `Failed to fetch models: ${response.status}`);
+    let message = `HTTP ${response.status}`;
+    try {
+      const body = await response.json();
+      message = body.message || message;
+    } catch {
+      // empty or non-JSON error body
+    }
+    throw new Error(message);
   }
 
   return response.json();

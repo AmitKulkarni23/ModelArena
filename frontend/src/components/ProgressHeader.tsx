@@ -42,10 +42,10 @@ export function ProgressHeader({
               </Typography>
               <Typography variant="caption" color="textSecondary">
                 {isAnalyzing
-                  ? "Analyzing results..."
+                  ? "Composite scores computed. Opening results..."
                   : isJudging
-                    ? "Judging responses..."
-                    : "Running models..."}
+                    ? `LLM judge scoring ${judgeTasksCompleted + 1} of ${judgeTasksTotal} responses...`
+                    : `Querying ${modelTasksTotal} model${modelTasksTotal !== 1 ? "s" : ""} via OpenRouter...`}
               </Typography>
             </Stack>
             <Button
